@@ -1,0 +1,8 @@
+gordon_bombay: 
+  target: dev
+  outputs: 
+    dev: 
+      type: duckdb 
+      path: "../data/duck_pond.duckdb"
+      schema: source_data
+      threads: 4

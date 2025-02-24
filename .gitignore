@@ -1,0 +1,10 @@
+.env
+dagster_duck.egg-info
+history
+logs
+schedules
+storage
+.telemetry
+.nux 
+__pycache__
+data
