@@ -13,7 +13,7 @@ setup(
         "polars",
         "pandas",
         "duckdb",
-        "dlt[duckdb,filesystem,parquet,iceberg]",
+        "dlt[duckdb,filesystem,parquet,pyiceberg]",
         "pyarrow"
     ],
     extras_require={"dev": ["dagster-webserver", "pytest"]},
