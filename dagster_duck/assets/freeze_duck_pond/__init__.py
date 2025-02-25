@@ -22,7 +22,8 @@ def source():
     @dlt.resource(
         name="stg_users_dim",
         table_format="iceberg",
-        primary_key="user_id"
+        primary_key="user_id", 
+        write_disposition={"disposition":"merge", "strategy":"delete-insert"}
     )
     def extract_data():
         conn = duckdb.connect(DUCKDB_PATH)
