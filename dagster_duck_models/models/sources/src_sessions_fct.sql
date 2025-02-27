@@ -25,7 +25,7 @@ WITH
                     json_extract_string(traffic_source, '$.source') as session_traffic_source__source,
                     json_extract_string(traffic_source, '$.medium') as session_traffic_source__medium,
                     json_extract_string(traffic_source, '$.campaign') as session_traffic_source__campaign
-                FROM {{source('duck_pond', 'pond_data')}}
+                FROM {{ source('duck_pond', 'pond_data') }}
                 {% if is_incremental() %}
                 WHERE MAKE_TIMESTAMP(CAST(visit_start_time||'000' AS BIGINT))  > (SELECT MAX(session_start_time) FROM {{ this }})
                 {% endif %}

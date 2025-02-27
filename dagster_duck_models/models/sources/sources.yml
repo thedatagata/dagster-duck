@@ -7,6 +7,9 @@ sources:
     tables:
       - name: pond_data
         description: Root table containing Google Analytics session data including visitor information, device details, and session metrics
+        meta: 
+          dagster: 
+            asset_key: ["dlt_source_pond_data"]
         columns:
           - name: _dlt_id
           - name: visit_id 
@@ -20,6 +23,9 @@ sources:
           - name: traffic_source
       - name: pond_data__hits
         description: Table containing Google Analytics pageview data
+        meta: 
+          dagster: 
+            asset_key: ["dlt_source_pond_data"]
         columns:
           - name: _dlt_parent_id
           - name: _dlt_list_idx

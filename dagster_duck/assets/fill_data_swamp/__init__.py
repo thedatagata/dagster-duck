@@ -1,9 +1,24 @@
-from dagster import AssetExecutionContext
-from dagster_dlt import DagsterDltResource, dlt_assets
+from dagster import AssetExecutionContext, AssetSpec
+from dagster_dlt import DagsterDltResource, DagsterDltTranslator, dlt_assets
+from dagster_dlt.translator import DltResourceTranslatorData
 import dlt
 from dlt.sources.filesystem import filesystem as src_fs
 import polars as pl
 import pendulum
+
+# Define external asset for source file
+source_file = AssetSpec(
+    "s3_source_data",
+    description="Google Analytics data in S3 bucket at s3://duck-lake/data-swamp/train_v2.csv"
+)
+
+# Define custom translator
+class DataSwampTranslator(DagsterDltTranslator):
+    def get_asset_spec(self, data: DltResourceTranslatorData):
+        default_spec = super().get_asset_spec(data)
+        return default_spec.replace_attributes(
+            deps=[AssetSpec("s3_source_data").key]
+        )
 
 dlt_resource = DagsterDltResource()
 
@@ -59,7 +74,7 @@ def source():
         progress="log"
     ),
     name="fill_data_swamp",
-    group_name="ga_sessions_pipeline"
+    dagster_dlt_translator=DataSwampTranslator()
 )
 def fill_data_swamp(context: AssetExecutionContext, dlt: DagsterDltResource):
     yield from dlt.run(

@@ -1,17 +1,22 @@
-from dagster import AssetExecutionContext
-from dagster_dlt import DagsterDltResource, dlt_assets
+from dagster import AssetExecutionContext, AssetKey
+from dagster_dlt import DagsterDltResource, DagsterDltTranslator, dlt_assets
+from dagster_dlt.translator import DltResourceTranslatorData
 import dlt
 from dlt.destinations import filesystem as dest_fs
 import polars as pl 
 import duckdb
 
-from pathlib import Path
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
-DATA_DIR = PROJECT_ROOT / "data"
-DATA_DIR.mkdir(exist_ok=True)
-DUCKDB_PATH = DATA_DIR / "duck_pond.duckdb"
+from ...constants import DUCKDB_PATH
 
 dlt_resource = DagsterDltResource()
+
+# Define custom translator to handle dependencies
+class FreezeDuckPondTranslator(DagsterDltTranslator):
+    def get_asset_spec(self, data: DltResourceTranslatorData):
+        default_spec = super().get_asset_spec(data)
+        return default_spec.replace_attributes(
+            deps=[AssetKey("stg_users_dim")]
+        )
 
 @dlt.source
 def source():
@@ -26,7 +31,7 @@ def source():
         write_disposition={"disposition":"merge", "strategy":"delete-insert"}
     )
     def extract_data():
-        conn = duckdb.connect(DUCKDB_PATH)
+        conn = duckdb.connect(str(DUCKDB_PATH))  # Convert Path to string here
         df = conn.execute("SELECT * FROM source_data.stg_users_dim").pl()
         conn.close()
         yield from process(df)
@@ -42,8 +47,8 @@ def source():
         dataset_name="staging",
         progress="log"
     ),
-    name="freeze_duck_pond", 
-    group_name="ga_sessions_pipeline"
+    name="freeze_duck_pond",
+    dagster_dlt_translator=FreezeDuckPondTranslator()
 )
 def freeze_duck_pond(context: AssetExecutionContext, dlt: DagsterDltResource):
     yield from dlt.run(

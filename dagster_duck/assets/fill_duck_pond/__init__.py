@@ -1,18 +1,22 @@
-from dagster import AssetExecutionContext
-from dagster_dlt import DagsterDltResource, dlt_assets
+from dagster import AssetExecutionContext, AssetKey
+from dagster_dlt import DagsterDltResource, DagsterDltTranslator, dlt_assets
+from dagster_dlt.translator import DltResourceTranslatorData
 import dlt
 from dlt.sources.filesystem import filesystem as src_fs
 import polars as pl 
 import ast 
 
-from pathlib import Path
-PROJECT_ROOT = Path(__file__).parent.parent.parent.parent.resolve()
-DATA_DIR = PROJECT_ROOT / "data"
-DATA_DIR.mkdir(exist_ok=True)
-DUCKDB_PATH = DATA_DIR / "duck_pond.duckdb"
-
+from ...constants import DUCKDB_PATH
 
 dlt_resource = DagsterDltResource()
+
+# Define custom translator to add dependencies
+class DuckPondTranslator(DagsterDltTranslator):
+    def get_asset_spec(self, data: DltResourceTranslatorData):
+        default_spec = super().get_asset_spec(data)
+        return default_spec.replace_attributes(
+            deps=[AssetKey("dlt_source_swamp_data")]
+        )
 
 
 @dlt.source
@@ -37,7 +41,7 @@ def source():
 
     @dlt.resource(name="pond_data",max_table_nesting=3)
     def extract_data():
-        for file_object in src_fs(bucket_url="s3://duck-lake/data-swamp/daily/ga_data/", file_glob="*.parquet"):
+        for file_object in src_fs(bucket_url="s3://duck-lake/data-swamp/daily/swamp_data/", file_glob="*.parquet"):
             scan = pl.scan_parquet(file_object['file_url'])
             
             # Get unique months
@@ -69,12 +73,12 @@ def source():
     dlt_source=source(),
     dlt_pipeline=dlt.pipeline(
         pipeline_name="fill_duck_pond",
-        destination=dlt.destinations.duckdb(DUCKDB_PATH),
+        destination=dlt.destinations.duckdb(str(DUCKDB_PATH)),  # Convert Path to string here
         dataset_name="source_data",
         progress="log"
     ),
-    name="fill_duck_pond", 
-    group_name="ga_sessions_pipeline"
+    name="fill_duck_pond",
+    dagster_dlt_translator=DuckPondTranslator()
 )
 def fill_duck_pond(context: AssetExecutionContext, dlt: DagsterDltResource):
     yield from dlt.run(
